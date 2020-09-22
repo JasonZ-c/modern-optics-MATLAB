@@ -1,0 +1,75 @@
+nm = 1e-9;
+
+
+L=201;#201
+H=330;#330
+Phi=(0:1:90); # 42
+
+fname = "simulation";
+MatrX=matrix(length(Phi),length(H),length(L));
+TransRCP=matrix(length(Phi),length(H),length(L));
+TransLCP=matrix(length(Phi),length(H),length(L));
+TransT=matrix(length(Phi),length(H),length(L));
+#MatrY=matrix(length(L),length(L));
+PhaseX=MatrX;
+#PhaseY=MatrX;
+
+for (kPhi = 1:length(Phi)) {
+  for (kH = 1:length(H)) {
+    for (kL = 1:length(L)) {
+
+        load(fname + ".fsp");
+        
+        switchtolayout;
+        select("Cadding");
+        ##set("index",n_LN(kH));
+        set("y span",L(kL)*nm);
+        set("z max",H(kH)*nm);        
+        set("rotation 1",Phi(kPhi));
+      
+        run;
+     Ex=getdata("T","Ex");
+     Ey=getdata("T","Ey");
+   pp=real(getdata("T","power"));#total power collected by the monitor
+   f=getdata("T",'f');
+   x=getdata("T","x");
+   y=getdata("T","y");
+
+E2=getelectric("T");
+E_L = Ex+1i*Ey;
+E_R = Ex-1i*Ey;
+RCP = (abs(E_R))^2;
+LCP = (abs(E_L))^2;
+
+out = sourcepower(f,2);
+T_T=transmission("T");
+TransT(kPhi,kH,kL)=T_T;
+M_T = pp/out;
+
+R_T = 0.5*integrate(RCP,1:2,x,y)/integrate(E2,1:2,x,y)*T_T;#Tansmission of RCP
+L_T = 0.5*integrate(LCP,1:2,x,y)/integrate(E2,1:2,x,y)*T_T;#Tansmission of LCP
+MatrX(kPhi,kH,kL)=T_T;
+TransRCP(kPhi,kH,kL)=R_T;
+TransLCP(kPhi,kH,kL)=L_T;
+s=size(Ex);
+Nx=s(1);
+Ny=s(2);
+
+for (nw=1:s(4)) {
+ PhaseX(kL,nw)=mean(angle(Ex(1:Nx,1:Ny,1,nw)));
+}
+
+?"L = " + num2str(L(kL)) + "nm";  
+
+fname_setMX = "MX_film";
+fname_setPX = "PX_film";
+
+matlabsave("Tansmission all",TransT);
+matlabsave("Tansmission of RCP",TransRCP);
+matlabsave("Tansmission of LCP",TransLCP);
+matlabsave(fname_setMX,MatrX);
+matlabsave(fname_setPX,PhaseX);
+
+}}}
+
+
